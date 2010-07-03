@@ -20,7 +20,7 @@ var mixin = function(target) {
   return target;
 };
 
-mixin(global, require("../lib/jsdom/level1/core").dom.level1.core);
+mixin(global, require(__dirname + "/../lib/jsdom/level1/core").dom.level1.core);
 mixin(global, require(__dirname + "/mjsunit"));
 mixin(global, require("./DOMTestCase"));
 
@@ -32,7 +32,20 @@ global.builder = {
 };
 
 global.load = function(docRef, doc, name) {
-  return require("./" + global.builder.testDirectory + "/files/" + name + "." + global.builder.type)[name]();
+  var file = __dirname + "/" + global.builder.testDirectory +
+             "/files/" + name + "." + global.builder.type,
+      fn = require(file);
+  
+
+  if (!fn[name]) {
+    throw new Error("Test method " + name + " not found..");
+  }
+
+  try {
+    return fn[name].call(global);
+  } catch (e) {
+    debug(e.stack);
+  }
 };
 
 global.checkInitialization = function() {
@@ -45,7 +58,7 @@ global.debug = function(val) {
   try {
     str = JSON.stringify(val, null, "  ");
   } catch (e) {
-    str = sys.inspect(val);
+    str = sys.inspect(val, null, true);
   }
   sys.puts(str);
   process.exit();
@@ -73,7 +86,6 @@ var suites = {
     }
   },
   "level2/core" : { cases: require("./level2/core").tests, setUp : function() {
-      mixin(global, require("../lib/jsdom/level2/core").dom.level2.core);
       global.builder.contentType   = "text/xml";
       global.builder.type          = "xml";
       global.builder.testDirectory = "level2/core"; 
@@ -84,7 +96,6 @@ var suites = {
       global.dom = require(__dirname + "/../lib/jsdom/level1/core").dom.level1.core;
       global.browser = require(__dirname + "/../lib/jsdom/browser").browserAugmentation(dom);
       
-      
       global.builder.contentType   = "text/html";
       global.builder.type          = "html";
       global.builder.testDirectory = "browser";  
@@ -93,7 +104,6 @@ var suites = {
   "window"     : { cases: require("./window").tests, setUp : function() {
       global.dom = require(__dirname + "/../lib/jsdom/level1/core").dom.level1.core;
       global.window = require(__dirname + "/../lib/jsdom/browser").windowAugmentation(dom);
-      
       
       global.builder.contentType   = "text/html";
       global.builder.type          = "html";
@@ -124,6 +134,4 @@ var suites = {
 */
 };
 
-require.paths.unshift(__dirname + "/../../.node_libraries");
 require("mjsunit.runner/lib/runner").run(suites);
-
